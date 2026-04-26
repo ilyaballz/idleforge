@@ -1135,6 +1135,7 @@ function drawShopPrompt(state) {
 }
 
 function drawPortalPrompt(state) {
+  if (state._promptHitbox) state._promptHitbox.portal = null;
   // Prefer the main portal prompt (deeper) when both are near, which realistically won't happen.
   const portal = state.nearPortal
     ? WORLD.portal
@@ -1142,25 +1143,16 @@ function drawPortalPrompt(state) {
   if (!portal) return;
   const p = state.player;
   const meetsReq = p.pickaxeTier >= (portal.requiresPickaxe || 0);
-  let msg;
+  let label, color;
   if (meetsReq) {
-    msg = `◆ TAP TO ENTER ${portal.label} ◆`;
+    label = `◆ ENTER ${portal.label} ◆`;
+    color = '#6eb4ff';
   } else {
     const need = PICKAXES[portal.requiresPickaxe];
-    msg = need ? `✗ REQUIRES ${need.name.toUpperCase()} ✗` : '✗ LOCKED ✗';
+    label = need ? `✗ NEED ${need.name.toUpperCase()} ✗` : '✗ LOCKED ✗';
+    color = '#e04040';
   }
-  ctx.font = 'bold 11px ui-monospace, monospace';
-  ctx.textAlign = 'center';
-  const w = ctx.measureText(msg).width + 20;
-  const x = WORLD.viewW / 2 - w / 2;
-  const y = WORLD.viewH - 150;
-  ctx.fillStyle = 'rgba(10,12,15,0.85)';
-  ctx.fillRect(x, y, w, 22);
-  ctx.strokeStyle = meetsReq ? '#6eb4ff' : '#e04040';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, w, 22);
-  ctx.fillStyle = meetsReq ? '#6eb4ff' : '#e04040';
-  ctx.fillText(msg, WORLD.viewW / 2, y + 15);
+  drawProximityPrompt(state, 'portal', label, color);
 }
 
 // ---------- HUD ----------
@@ -1254,6 +1246,22 @@ export function initPopups(state) {
       renderShop(state);
       openPopup('shop');
       return;
+    }
+    if (hitInRect(promptHits.portal)) {
+      const portal = state.nearPortal
+        ? WORLD.portal
+        : (state.nearExitPortal ? WORLD.exitPortal : null);
+      if (portal) {
+        const meetsReq = state.player.pickaxeTier >= (portal.requiresPickaxe || 0);
+        if (!meetsReq) {
+          const need = PICKAXES[portal.requiresPickaxe];
+          showToast(need ? `Requires ${need.name}` : 'Locked');
+        } else {
+          travelToZone(state, portal.toZone);
+          _forgeRenderKey = '';
+        }
+        return;
+      }
     }
 
     const fb = WORLD.forgeBuilding;

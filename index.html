@@ -55,7 +55,11 @@
   /* ---------- Top minimal HUD ---------- */
   .top-hud {
     position: absolute;
-    top: 8px; left: 8px; right: 8px;
+    /* env(safe-area-inset-top) keeps the HUD below the iOS notch / status bar
+       and Android cutouts. Falls back to 8px on browsers without safe-area. */
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
     z-index: 5;
     display: flex;
     flex-direction: column;
@@ -178,8 +182,8 @@
   /* ---------- Floating action buttons (bottom-right) ---------- */
   .side-btns {
     position: absolute;
-    bottom: 16px;
-    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
     z-index: 6;
     display: flex;
     flex-direction: row;
