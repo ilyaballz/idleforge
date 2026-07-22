@@ -1,10 +1,12 @@
 // Mobs: HP, damage per hit, attack speed (per sec), xp/gold reward, aggro radius
 // Glass-cannon tuning: low HP + high damage = short, tense fights.
+// `hpRegen` is HP per second restored once the mob has returned to its home
+// spawner and is no longer in combat — kicks in only at home, never mid-fight.
 export const MOBS = [
-  { tier: 0, name: 'Stone Golem',  hp: 30,   damage: 8,   attackSpeed: 1.0, reward: 60,   aggroRadius: 120, color: '#7a8490', size: 22 },
-  { tier: 1, name: 'Copper Snake', hp: 90,   damage: 14,  attackSpeed: 2.0, reward: 250,  aggroRadius: 120, color: '#c77b47', size: 20 },
-  { tier: 2, name: 'Iron Knight',  hp: 260,  damage: 60,  attackSpeed: 1.2, reward: 900,  aggroRadius: 120, color: '#5a6470', size: 26 },
-  { tier: 3, name: 'Werewolf',     hp: 900,  damage: 100, attackSpeed: 3.0, reward: 3000, aggroRadius: 120, color: '#8a5a3a', size: 28 },
+  { tier: 0, name: 'Stone Golem',  hp: 30,   damage: 8,   attackSpeed: 1.0, reward: 60,   aggroRadius: 120, color: '#7a8490', size: 22, hpRegen: 30  },
+  { tier: 1, name: 'Copper Snake', hp: 90,   damage: 14,  attackSpeed: 2.0, reward: 250,  aggroRadius: 120, color: '#c77b47', size: 20, hpRegen: 30  },
+  { tier: 2, name: 'Iron Knight',  hp: 260,  damage: 60,  attackSpeed: 1.2, reward: 900,  aggroRadius: 120, color: '#5a6470', size: 26, hpRegen: 50  },
+  { tier: 3, name: 'Werewolf',     hp: 900,  damage: 100, attackSpeed: 3.0, reward: 3000, aggroRadius: 120, color: '#8a5a3a', size: 28, hpRegen: 100 },
 ];
 
 // Both gold and XP use the same `reward` value.
@@ -17,7 +19,7 @@ export const BOSSES = {
     key: 'king_snake',
     name: 'King of Snakes',
     tier: 1,                  // shares Copper-band scaling for derived bonuses
-    hp: 800,
+    hp: 2400,                 // ~3x base mob HP — first real boss-length fight
     damage: 25,
     attackSpeed: 2.0,
     reward: 1800,             // gold + xp
@@ -26,12 +28,13 @@ export const BOSSES = {
     crownColor: '#f2c14e',
     size: 38,
     moveSpeed: 60,            // slightly slower than regular mobs — heavy presence
+    hpRegen: 60,              // ~40s to full once back home — pressures retry-pacing
   },
   iron_warlord: {
     key: 'iron_warlord',
     name: 'Iron Warlord',
     tier: 2,                  // Iron-band — gates the descent to Silver Depths
-    hp: 1800,
+    hp: 5400,
     damage: 70,
     attackSpeed: 1.0,
     reward: 4500,
@@ -40,12 +43,13 @@ export const BOSSES = {
     crownColor: '#f2c14e',
     size: 44,
     moveSpeed: 45,            // heavy armor — slowest of the bosses
+    hpRegen: 130,             // ~40s to full once back home
   },
   alpha_werewolf: {
     key: 'alpha_werewolf',
     name: 'Alpha Werewolf',
     tier: 3,                  // Silver-band — endgame gate of the prototype
-    hp: 5500,
+    hp: 16500,
     damage: 110,
     attackSpeed: 2.5,
     reward: 12000,
@@ -54,5 +58,6 @@ export const BOSSES = {
     crownColor: '#f2c14e',
     size: 46,
     moveSpeed: 80,            // faster than its pack — predator alpha
+    hpRegen: 400,             // ~40s to full once back home
   },
 };

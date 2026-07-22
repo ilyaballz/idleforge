@@ -1,0 +1,21 @@
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
+
+# Future tooling (in case Node tooling gets added later)
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local

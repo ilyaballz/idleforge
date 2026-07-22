@@ -14,7 +14,7 @@ import { PICKAXES } from './balance/pickaxes.js';
 import { ORES } from './balance/ores.js';
 import {
   SLOT_ORDER, SLOTS, getRarityByKey, RARITIES, MAX_UPGRADE_LEVEL,
-  upgradeCost, totalSellPrice,
+  upgradeCost, totalSellPrice, upgradedStat, nextSocketLevel,
 } from './balance/equipment.js';
 import { xpForLevel } from './balance/player.js';
 import {
@@ -705,7 +705,9 @@ function drawMob(m, player, isTarget) {
     const pct = m.hp / m.maxHp;
     ctx.fillStyle = '#000';
     ctx.fillRect(m.x - barW / 2, m.y - m.size - 2, barW, 4);
-    ctx.fillStyle = '#e04040';
+    // Green = mob is healing back to full at its spawner. Player should read
+    // this as "I left it too long — coming back will be a fresh fight".
+    ctx.fillStyle = m.isRegen ? '#4fbf5f' : '#e04040';
     ctx.fillRect(m.x - barW / 2, m.y - m.size - 2, barW * pct, 4);
   }
 
@@ -781,9 +783,11 @@ function drawBossLabel(m) {
   // Bar
   ctx.fillStyle = '#000';
   ctx.fillRect(x - 1, y - 1, barW + 2, barH + 2);
-  ctx.fillStyle = '#3a1010';
+  // Track tinted to match active state — dark red normally, dark green while
+  // the boss is healing at its spawner so the colour reads even at high HP%.
+  ctx.fillStyle = m.isRegen ? '#103a18' : '#3a1010';
   ctx.fillRect(x, y, barW, barH);
-  ctx.fillStyle = '#e04040';
+  ctx.fillStyle = m.isRegen ? '#4fbf5f' : '#e04040';
   ctx.fillRect(x, y, barW * pct, barH);
   // Gold trim
   ctx.strokeStyle = '#f2c14e';
@@ -1425,6 +1429,11 @@ export function renderItemDetail(state) {
   const nextCost = item.upgradeLevel < MAX_UPGRADE_LEVEL
     ? upgradeCost(item.baseSellPrice, item.upgradeLevel)
     : null;
+  const nextStat = nextCost !== null ? upgradedStat(item.stat) : null;
+  const nextStatDelta = nextStat !== null ? nextStat - item.stat : 0;
+  const nextLevel = item.upgradeLevel + 1;
+  const unlocksSocket = nextCost !== null
+    && nextSocketLevel(item.rarity, item.upgradeLevel) === nextLevel;
   const canAffordUpgrade = nextCost !== null && p.gold >= nextCost ? 1 : 0;
   const isEq = p.equipped[item.slot]?.id === item.id ? 1 : 0;
   const pickerGems = _socketPickerFor === item.id ? p.gemInventory.length : -1;
@@ -1455,7 +1464,7 @@ export function renderItemDetail(state) {
         ? `<button class="item-action equip" disabled>EQUIPPED</button>`
         : `<button class="item-action equip" data-detail-equip="${item.id}">EQUIP</button>`}
       ${nextCost !== null
-        ? `<button class="item-action upgrade" data-detail-upgrade="${item.id}" ${p.gold < nextCost ? 'disabled' : ''}>UPGRADE<span class="sub">Lv ${item.upgradeLevel + 1} · ${goldCost(nextCost)}</span></button>`
+        ? `<button class="item-action upgrade" data-detail-upgrade="${item.id}" ${p.gold < nextCost ? 'disabled' : ''}>UPGRADE${unlocksSocket ? ' ◇' : ''}<span class="sub">L${nextLevel} · +${fmtNum(nextStatDelta)} → ${fmtNum(nextStat)} · ${goldCost(nextCost)}</span></button>`
         : `<button class="item-action upgrade" disabled>MAXED<span class="sub">Lv ${MAX_UPGRADE_LEVEL}</span></button>`}
       <button class="item-action sell" data-detail-sell="${item.id}" data-sell-from="${isEquipped ? 'eq' : 'inv'}">SELL<span class="sub">${goldCost(sellPrice)}</span></button>
     </div>

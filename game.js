@@ -10,7 +10,7 @@ import { MOBS, mobMoveSpeed, BOSSES } from './balance/mobs.js';
 import {
   SLOTS, SLOT_ORDER, RARITIES, getRarityByKey, pickSlotKey,
   rollItemStat, baseSellPrice, upgradeCost, upgradedStat,
-  totalSellPrice, MAX_UPGRADE_LEVEL,
+  totalSellPrice, MAX_UPGRADE_LEVEL, socketsAtLevel,
 } from './balance/equipment.js';
 import {
   forgeAttempts, forgeChances, bestOfN,
@@ -318,6 +318,8 @@ function spawnBossAt(state, x, y, bossKey) {
     moveSpeed: tpl.moveSpeed || mobMoveSpeed,
     groupId: null,
     alertedTimer: 0,
+    hpRegen: tpl.hpRegen || 0, // restored only at home, never mid-fight
+    isRegen: false,            // UI hint — set in updateMob
   });
 }
 
@@ -851,6 +853,8 @@ function spawnMobAt(state, x, y, tier, groupId = null) {
     isGuardian: true,        // stays near its spawn (used by updateMob)
     groupId,                 // chain-aggro pack id (null = solo mob)
     alertedTimer: 0,         // sec remaining of forced aggro from chain
+    hpRegen: tpl.hpRegen || 0,
+    isRegen: false,
   });
 }
 
@@ -869,6 +873,8 @@ export function spawnMob(state) {
     attackTimer: 0,
     color: tpl.color, size: tpl.size,
     hitFlash: 0,
+    hpRegen: tpl.hpRegen || 0,
+    isRegen: false,
   });
 }
 
@@ -1119,6 +1125,7 @@ function updateMob(state, mob, dt) {
   // Alerted = forced aggro (chain-aggro from a damaged group-mate) ignores radius.
   const isAggroed = mob.alertedTimer > 0 || d <= mob.aggroRadius;
   if (isAggroed) {
+    mob.isRegen = false;
     // Move toward player
     const stats = getPlayerStats(p);
     const touchDist = mob.size + p.size * 0.5;
@@ -1173,6 +1180,16 @@ function updateMob(state, mob, dt) {
     if (homeD > 2) {
       mob.x += (mob.homeX - mob.x) / homeD * speed * 0.5 * dt;
       mob.y += (mob.homeY - mob.y) / homeD * speed * 0.5 * dt;
+      mob.isRegen = false;
+    } else if (mob.hp < mob.maxHp && (mob.hpRegen || 0) > 0) {
+      // At home, no aggro — heal back to full so the player can't whittle a
+      // boss down across many short hit-and-run trips. Damage in updateCombat
+      // re-aggros the mob (alertedTimer / priority), which kicks us out of
+      // this branch and stops regen on the next tick.
+      mob.hp = Math.min(mob.maxHp, mob.hp + mob.hpRegen * dt);
+      mob.isRegen = mob.hp < mob.maxHp;
+    } else {
+      mob.isRegen = false;
     }
     mob.attackTimer = 0;
   }
@@ -1315,7 +1332,6 @@ export function craftItem(state, oreSpent) {
   const stat = rollItemStat(ore.value, slotKey, rarityKey);
   const base = baseSellPrice(ore.value, rarityKey);
   const rarity = getRarityByKey(rarityKey);
-  const sockets = rarity.sockets();
   const item = {
     id: uid(),
     slot: slotKey,
@@ -1326,7 +1342,7 @@ export function craftItem(state, oreSpent) {
     upgradeLevel: 0,
     totalUpgradeCost: 0,
     baseSellPrice: base,
-    sockets,
+    sockets: 0,            // unlocked via upgrades — see socketsAtLevel
     gems: [],
     oreName: ore.name,
   };
@@ -1462,6 +1478,10 @@ export function upgradeItem(state, itemId) {
   item.upgradeLevel++;
   item.totalUpgradeCost += cost;
   item.stat = upgradedStat(item.stat);
+  // Sockets unlock through upgrades. Never shrink — pre-existing items rolled
+  // under the old "sockets at craft" system keep whatever they already had.
+  const unlocked = socketsAtLevel(item.rarity, item.upgradeLevel);
+  if (unlocked > (item.sockets || 0)) item.sockets = unlocked;
   state.log.unshift(`⬆ Upgraded ${SLOTS[item.slot].label} L${item.upgradeLevel}`);
   trimLog(state);
 }
@@ -1515,7 +1535,7 @@ function rollMarketItem(state) {
     upgradeLevel: 0,
     totalUpgradeCost: 0,
     baseSellPrice: baseSellPrice(ore.value, rarityKey),
-    sockets: rarity.sockets(),
+    sockets: 0,            // unlocked via upgrades — see socketsAtLevel
     gems: [],
     oreName: ore.name,
     price,             // crystals
